@@ -89,10 +89,12 @@ async function falStatus(taskId, model) {
     const FAL_KEY = process.env.FAL_KEY;
     if (!FAL_KEY) throw httpError(500, 'FAL_KEY not configured');
 
-    // fal.ai status path is namespaced by app prefix.
+    // fal.ai status path = app-level namespace (strip /text-to-video and /fast suffixes).
+    // e.g. `bytedance/seedance-2.0/text-to-video`     -> `bytedance/seedance-2.0`
+    //      `bytedance/seedance-2.0/fast/text-to-video` -> `bytedance/seedance-2.0`
     const prefix = model
         ? model.endpoint.split('/text-to-video')[0].replace(/\/(fast|v2|v2-fast|master)$/, '')
-        : 'fal-ai/bytedance';
+        : 'bytedance/seedance-2.0';
     const auth = { 'Content-Type': 'application/json', Authorization: `Key ${FAL_KEY}` };
 
     const statusResp = await fetchIdempotent(

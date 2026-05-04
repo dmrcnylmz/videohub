@@ -1,11 +1,13 @@
 // Model catalog — single source of truth for both backend dispatch and frontend listing.
 // Each entry: { id, provider, displayName, tier, pricePerSec, endpoint, payloadShape }
 //
-// fal.ai endpoints verified May 2026 against fal.ai/models pages:
-//   ✅ verified — confirmed against the model's docs page on fal.ai
-//   ⚠️ unverified — best-effort path; if generation 404s, copy the exact endpoint
-//      from the model's "API" tab on fal.ai/models/* and update the `endpoint` field.
-// MuApi catalog is intentionally small — add IDs as you confirm them in the MuApi dashboard.
+// IMPORTANT — fal.ai endpoint format:
+//   fal.ai uses `<vendor>/<model>` as the model id, NOT `fal-ai/<vendor>/<model>`.
+//   Correct: `bytedance/seedance-2.0/text-to-video`
+//   Wrong:   `fal-ai/bytedance/seedance-2.0/text-to-video`  ← returns 405
+//
+//   Confirm endpoint from `https://fal.ai/models/<vendor>/<model>/api` page
+//   before flipping `verified: true`.
 
 export const MODELS = [
     // --- fal.ai · Seedance 2.0 ---
@@ -18,7 +20,7 @@ export const MODELS = [
         pricePerSec: 0.022,
         priceLabel: '$0.022/sn',
         defaultDuration: 5,
-        endpoint: 'fal-ai/bytedance/seedance-2.0/fast/text-to-video',
+        endpoint: 'bytedance/seedance-2.0/fast/text-to-video',
         verified: true,
         blurb: 'Fiyat/performans lideri. Hızlı, %91 ucuz, hareket güçlü.',
     },
@@ -31,7 +33,7 @@ export const MODELS = [
         pricePerSec: 0.247,
         priceLabel: '$0.247/sn',
         defaultDuration: 5,
-        endpoint: 'fal-ai/bytedance/seedance-2.0/text-to-video',
+        endpoint: 'bytedance/seedance-2.0/text-to-video',
         verified: true,
         blurb: 'Tam 1080p fidelity, kompozit liderlik tablosunda en üstte.',
     },
@@ -60,7 +62,7 @@ export const MODELS = [
         priceLabel: '$0.40/sn',
         defaultDuration: 8,
         endpoint: 'fal-ai/veo3.1',
-        verified: true,
+        verified: false,
         blurb: 'En sinematik AI video modeli. 24 fps native ses + cinema-grade grading.',
     },
 
@@ -88,7 +90,7 @@ export const MODELS = [
         priceLabel: '$0.05/sn',
         defaultDuration: 5,
         endpoint: 'fal-ai/hunyuan-video',
-        verified: true,
+        verified: false,
         blurb: 'Açık kaynak Tencent modeli, yüksek görsel kalite.',
     },
     {
@@ -114,7 +116,7 @@ export const MODELS = [
         priceLabel: '$0.04/sn',
         defaultDuration: 5,
         endpoint: 'fal-ai/ltx-2.3/text-to-video',
-        verified: true,
+        verified: false,
         blurb: 'Açık kaynak, hızlı, sinematik kontrol. HDR destekli.',
     },
 
