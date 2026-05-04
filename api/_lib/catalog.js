@@ -1,0 +1,213 @@
+// Model catalog — single source of truth for both backend dispatch and frontend listing.
+// Each entry: { id, provider, displayName, tier, pricePerSec, endpoint, payloadShape }
+//
+// fal.ai endpoints verified May 2026 against fal.ai/models pages:
+//   ✅ verified — confirmed against the model's docs page on fal.ai
+//   ⚠️ unverified — best-effort path; if generation 404s, copy the exact endpoint
+//      from the model's "API" tab on fal.ai/models/* and update the `endpoint` field.
+// MuApi catalog is intentionally small — add IDs as you confirm them in the MuApi dashboard.
+
+export const MODELS = [
+    // --- fal.ai · Seedance 2.0 ---
+    {
+        id: 'seedance-fast',
+        provider: 'fal',
+        displayName: 'Seedance 2.0 Fast',
+        vendor: 'ByteDance',
+        tier: 'fast',
+        pricePerSec: 0.022,
+        priceLabel: '$0.022/sn',
+        defaultDuration: 5,
+        endpoint: 'fal-ai/bytedance/seedance/v2-fast/text-to-video',
+        verified: true,
+        blurb: 'Fiyat/performans lideri. Hızlı, %91 ucuz, hareket güçlü.',
+    },
+    {
+        id: 'seedance-pro',
+        provider: 'fal',
+        displayName: 'Seedance 2.0 Pro',
+        vendor: 'ByteDance',
+        tier: 'pro',
+        pricePerSec: 0.247,
+        priceLabel: '$0.247/sn',
+        defaultDuration: 5,
+        endpoint: 'fal-ai/bytedance/seedance/v2/text-to-video',
+        verified: true,
+        blurb: 'Tam 1080p fidelity, kompozit liderlik tablosunda en üstte.',
+    },
+
+    // --- fal.ai · Google Veo 3.1 ---
+    {
+        id: 'veo-3-1-fast',
+        provider: 'fal',
+        displayName: 'Veo 3.1 Fast',
+        vendor: 'Google',
+        tier: 'fast',
+        pricePerSec: 0.15,
+        priceLabel: '$0.15/sn',
+        defaultDuration: 8,
+        endpoint: 'fal-ai/veo3.1/fast',
+        verified: false,
+        blurb: 'Veo 3.1\'in hızlı varyantı. Native ses, sinematik renk gradingi.',
+    },
+    {
+        id: 'veo-3-1',
+        provider: 'fal',
+        displayName: 'Veo 3.1',
+        vendor: 'Google',
+        tier: 'pro',
+        pricePerSec: 0.4,
+        priceLabel: '$0.40/sn',
+        defaultDuration: 8,
+        endpoint: 'fal-ai/veo3.1',
+        verified: true,
+        blurb: 'En sinematik AI video modeli. 24 fps native ses + cinema-grade grading.',
+    },
+
+    // --- fal.ai · Çeşitlilik paketi ---
+    {
+        id: 'kling-3',
+        provider: 'fal',
+        displayName: 'Kling 3.0 Pro',
+        vendor: 'Kuaishou',
+        tier: 'pro',
+        pricePerSec: 0.28,
+        priceLabel: '$0.28/sn',
+        defaultDuration: 5,
+        endpoint: 'fal-ai/kling-video/v2.5/master/text-to-video',
+        verified: false,
+        blurb: 'Akıcı hareket, native ses, custom element desteği.',
+    },
+    {
+        id: 'hunyuan',
+        provider: 'fal',
+        displayName: 'Hunyuan Video',
+        vendor: 'Tencent (open-source)',
+        tier: 'fast',
+        pricePerSec: 0.05,
+        priceLabel: '$0.05/sn',
+        defaultDuration: 5,
+        endpoint: 'fal-ai/hunyuan-video',
+        verified: true,
+        blurb: 'Açık kaynak Tencent modeli, yüksek görsel kalite.',
+    },
+    {
+        id: 'wan-2-7',
+        provider: 'fal',
+        displayName: 'Wan 2.7 Pro',
+        vendor: 'Alibaba (open-source)',
+        tier: 'pro',
+        pricePerSec: 0.18,
+        priceLabel: '$0.18/sn',
+        defaultDuration: 5,
+        endpoint: 'fal-ai/wan-pro/text-to-video',
+        verified: false,
+        blurb: 'Detay/kompozisyon güçlü, iyi prompt uyumu.',
+    },
+    {
+        id: 'ltx-2-3',
+        provider: 'fal',
+        displayName: 'LTX 2.3',
+        vendor: 'Lightricks (open-source)',
+        tier: 'fast',
+        pricePerSec: 0.04,
+        priceLabel: '$0.04/sn',
+        defaultDuration: 5,
+        endpoint: 'fal-ai/ltx-2.3/text-to-video',
+        verified: true,
+        blurb: 'Açık kaynak, hızlı, sinematik kontrol. HDR destekli.',
+    },
+
+    // --- Replicate · SaaS-uygun açık kaynak modeller ---
+    // license: 'apache-2.0' = SaaS dahil sınırsız ticari kullanım.
+    // license: 'ltx-owl' = $10M altı yıllık gelirde tamamen serbest.
+    // license: 'tencent-community' = territorial restrictions, SaaS için riskli.
+    {
+        id: 'rep-wan-2-7-t2v',
+        provider: 'replicate',
+        displayName: 'Wan 2.7 T2V',
+        vendor: 'Alibaba (Apache-2.0)',
+        license: 'apache-2.0',
+        tier: 'pro',
+        pricePerSec: 0.05,
+        priceLabel: '~$0.05/sn',
+        defaultDuration: 5,
+        endpoint: 'wan-video/wan-2.7-t2v',
+        verified: false,
+        blurb: 'En iyi açık kaynak. Sinematik kontrol, 27B MoE, SaaS sınırsız izinli.',
+    },
+    {
+        id: 'rep-wan-2-5-t2v-fast',
+        provider: 'replicate',
+        displayName: 'Wan 2.5 T2V Fast',
+        vendor: 'Alibaba (Apache-2.0)',
+        license: 'apache-2.0',
+        tier: 'fast',
+        pricePerSec: 0.03,
+        priceLabel: '~$0.03/sn',
+        defaultDuration: 5,
+        endpoint: 'wan-video/wan-2.5-t2v-fast',
+        verified: false,
+        blurb: 'Wan ailesinin hızlı varyantı. Ucuz + Apache-2.0.',
+    },
+    {
+        id: 'rep-mochi-1',
+        provider: 'replicate',
+        displayName: 'Mochi 1',
+        vendor: 'Genmo (Apache-2.0)',
+        license: 'apache-2.0',
+        tier: 'pro',
+        pricePerSec: 0.07,
+        priceLabel: '~$0.07/sn',
+        defaultDuration: 5,
+        endpoint: 'genmoai/mochi-1',
+        verified: false,
+        blurb: 'Photorealistic, prompt uyumu güçlü, 10B param. SaaS sınırsız.',
+    },
+    {
+        id: 'rep-ltx-2',
+        provider: 'replicate',
+        displayName: 'LTX-2',
+        vendor: 'Lightricks (LTX-OWL)',
+        license: 'ltx-owl',
+        tier: 'fast',
+        pricePerSec: 0.04,
+        priceLabel: '~$0.04/sn',
+        defaultDuration: 5,
+        endpoint: 'lightricks/ltx-2',
+        verified: false,
+        blurb: 'En hızlı. Senkron audio+video. $10M ciroya kadar SaaS bedava.',
+    },
+
+    // --- MuApi · 200+ model aggregator (placeholder; gerçek ID'leri MuApi panelinden ekle) ---
+    {
+        id: 'muapi-veo3',
+        provider: 'muapi',
+        displayName: 'Veo 3 (via MuApi)',
+        vendor: 'Google · MuApi',
+        tier: 'pro',
+        pricePerSec: 0.35,
+        priceLabel: 'kredi bazlı',
+        defaultDuration: 8,
+        endpoint: 'veo3-text-to-video',
+        verified: false,
+        blurb: 'MuApi aggregator üzerinden Veo 3. Kredi bazlı fiyatlandırma.',
+    },
+    {
+        id: 'muapi-sora2',
+        provider: 'muapi',
+        displayName: 'Sora 2 (via MuApi)',
+        vendor: 'OpenAI · MuApi',
+        tier: 'pro',
+        pricePerSec: 0.5,
+        priceLabel: 'kredi bazlı',
+        defaultDuration: 8,
+        endpoint: 'sora-2-text-to-video',
+        verified: false,
+        blurb: 'OpenAI Sora 2, MuApi üzerinden. Yaratıcılık + uyum güçlü.',
+    },
+];
+
+export function getModelById(id) {
+    return MODELS.find((m) => m.id === id) || null;
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/optimize-prompt.js": { "maxDuration": 30 },
+    "api/video-generate.js": { "maxDuration": 30 },
+    "api/video-status/[id].js": { "maxDuration": 30 },
+    "api/models.js": { "maxDuration": 5 }
+  }
+}
