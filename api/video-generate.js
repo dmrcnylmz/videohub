@@ -7,7 +7,7 @@ export default async function handler(req, res) {
         return;
     }
 
-    const { modelId, prompt, duration, resolution, aspect_ratio } = req.body || {};
+    const { modelId, prompt, duration, resolution, aspect_ratio, image_url, seed } = req.body || {};
 
     if (!modelId || typeof modelId !== 'string') {
         res.status(400).json({ error: 'modelId is required' });
@@ -24,6 +24,11 @@ export default async function handler(req, res) {
         return;
     }
 
+    if (model.supportsImage && !image_url) {
+        res.status(400).json({ error: 'image_url is required for image-to-video models' });
+        return;
+    }
+
     const adapter = PROVIDERS[model.provider];
     if (!adapter) {
         res.status(500).json({ error: `Provider ${model.provider} not implemented` });
@@ -34,8 +39,10 @@ export default async function handler(req, res) {
         const { taskId } = await adapter.submit(model, {
             prompt,
             duration: duration || model.defaultDuration || 5,
-            resolution: resolution || '1080p',
+            resolution: resolution || (model.provider === 'local-comfy' ? '480p' : '1080p'),
             aspect_ratio: aspect_ratio || '16:9',
+            image_url: image_url || undefined,
+            seed: typeof seed === 'number' ? seed : undefined,
         });
         res.status(200).json({ taskId, modelId, provider: model.provider });
     } catch (err) {

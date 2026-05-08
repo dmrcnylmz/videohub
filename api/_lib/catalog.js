@@ -181,6 +181,63 @@ export const MODELS = [
         blurb: 'En hızlı. Senkron audio+video. $10M ciroya kadar SaaS bedava.',
     },
 
+    // --- Self-hosted ComfyUI (local-comfy provider) ---
+    // pricePerSec: 0 — runs on user's home GPU via Cloudflare Tunnel.
+    // Requires LOCAL_COMFY_URL env var; api/models.js filters these out when missing.
+    // Workflow skeletons live in api/_lib/comfy-workflows/ — replace with real
+    // ComfyUI exports after first successful generation on the other PC.
+    {
+        id: 'local-wan21-t2v',
+        provider: 'local-comfy',
+        workflow: 't2v-wan21',
+        displayName: 'Wan 2.1 T2V (Local)',
+        vendor: 'Alibaba · Self-hosted',
+        license: 'apache-2.0',
+        tier: 'fast',
+        pricePerSec: 0,
+        priceLabel: 'FREE',
+        defaultDuration: 5,
+        endpoint: 'local',
+        verified: false,
+        supportsImage: false,
+        requiresEnv: 'LOCAL_COMFY_URL',
+        blurb: 'Ev GPU\'sunda Wan 2.1 T2V. Sıfır API maliyeti, 1.3B/14B model.',
+    },
+    {
+        id: 'local-wan21-i2v',
+        provider: 'local-comfy',
+        workflow: 'i2v-wan21',
+        displayName: 'Wan 2.1 I2V (Local)',
+        vendor: 'Alibaba · Self-hosted',
+        license: 'apache-2.0',
+        tier: 'pro',
+        pricePerSec: 0,
+        priceLabel: 'FREE',
+        defaultDuration: 5,
+        endpoint: 'local',
+        verified: false,
+        supportsImage: true,
+        requiresEnv: 'LOCAL_COMFY_URL',
+        blurb: 'Image-to-video — multi-clip continuity\'nin kalbi. Önceki klibin son frame\'inden başlar.',
+    },
+    {
+        id: 'local-ltx-t2v',
+        provider: 'local-comfy',
+        workflow: 't2v-ltx',
+        displayName: 'LTX-Video T2V (Local)',
+        vendor: 'Lightricks · Self-hosted',
+        license: 'ltx-owl',
+        tier: 'fast',
+        pricePerSec: 0,
+        priceLabel: 'FREE',
+        defaultDuration: 5,
+        endpoint: 'local',
+        verified: false,
+        supportsImage: false,
+        requiresEnv: 'LOCAL_COMFY_URL',
+        blurb: 'Hızlı iterate. 30 fps real-time üstü, prompt iterasyonu için ideal.',
+    },
+
     // --- MuApi · 200+ model aggregator (placeholder; gerçek ID'leri MuApi panelinden ekle) ---
     {
         id: 'muapi-veo3',

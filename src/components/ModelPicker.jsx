@@ -1,4 +1,4 @@
-import { Loader2, AlertCircle, Zap, Gem, Sparkles, CheckCircle2, ShieldQuestion } from 'lucide-react';
+import { Loader2, AlertCircle, Zap, Gem, Sparkles, CheckCircle2, ShieldQuestion, Image as ImageIcon, HardDrive } from 'lucide-react';
 
 const TIER_ICON = {
     fast: Zap,
@@ -9,6 +9,7 @@ const PROVIDER_LABEL = {
     fal: 'fal.ai',
     muapi: 'MuApi',
     replicate: 'Replicate',
+    'local-comfy': 'Local · ComfyUI',
 };
 
 const LICENSE_BADGE = {
@@ -17,9 +18,18 @@ const LICENSE_BADGE = {
     'tencent-community': { label: 'SaaS riskli', tone: 'text-neon-red border-neon-red/30 bg-neon-red/5' },
 };
 
+function costPreview(model, sec = 30) {
+    if (model.pricePerSec === 0) return 'FREE';
+    if (typeof model.pricePerSec !== 'number') return null;
+    return `~$${(model.pricePerSec * sec).toFixed(2)}/${sec}s`;
+}
+
 function ModelCard({ model, selected, onSelect, disabled }) {
     const TierIcon = TIER_ICON[model.tier] || Sparkles;
     const licenseBadge = model.license ? LICENSE_BADGE[model.license] : null;
+    const isLocal = model.provider === 'local-comfy';
+    const isFree = model.pricePerSec === 0;
+    const cost = costPreview(model, 30);
     return (
         <button
             type="button"
@@ -27,31 +37,47 @@ function ModelCard({ model, selected, onSelect, disabled }) {
             disabled={disabled}
             className={`group relative text-left rounded-xl border p-3 transition-all
                 ${selected
-                    ? 'border-neon-blue bg-neon-blue/10 shadow-lg shadow-neon-blue/10'
+                    ? (isFree
+                        ? 'border-neon-green bg-neon-green/10 shadow-lg shadow-neon-green/10'
+                        : 'border-neon-blue bg-neon-blue/10 shadow-lg shadow-neon-blue/10')
                     : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'}
                 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
             {selected && (
                 <CheckCircle2
                     size={14}
-                    className="absolute top-2 right-2 text-neon-blue"
+                    className={`absolute top-2 right-2 ${isFree ? 'text-neon-green' : 'text-neon-blue'}`}
                 />
             )}
-            <div className="flex items-center gap-2 mb-2">
+            {isFree && (
+                <span className="absolute top-2 left-2 text-[9px] font-extrabold tracking-widest px-1.5 py-0.5 rounded bg-neon-green/20 text-neon-green border border-neon-green/40">
+                    FREE
+                </span>
+            )}
+            <div className={`flex items-center gap-2 mb-2 ${isFree ? 'mt-4' : ''}`}>
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center
-                    ${selected ? 'bg-neon-blue/20 text-neon-blue' : 'bg-white/5 text-text-muted'}`}>
+                    ${selected
+                        ? (isFree ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-blue/20 text-neon-blue')
+                        : 'bg-white/5 text-text-muted'}`}>
                     <TierIcon size={14} />
                 </div>
                 <span className={`text-[10px] uppercase tracking-wider font-semibold
                     ${model.tier === 'pro' ? 'text-neon-purple' : 'text-neon-green'}`}>
                     {model.tier}
                 </span>
-                <span className="ml-auto text-[10px] text-text-muted/60">
+                <span className="ml-auto text-[10px] text-text-muted/60 flex items-center gap-1">
+                    {isLocal && <HardDrive size={9} className="text-neon-green" />}
                     {PROVIDER_LABEL[model.provider] || model.provider}
                 </span>
             </div>
             <div className={`text-sm font-bold mb-0.5 ${selected ? 'text-text-primary' : 'text-text-secondary'}`}>
                 {model.displayName}
+                {model.supportsImage && (
+                    <ImageIcon
+                        size={11}
+                        className="inline-block ml-1 text-neon-blue/70"
+                    />
+                )}
                 {model.verified === false && (
                     <ShieldQuestion
                         size={12}
@@ -64,8 +90,15 @@ function ModelCard({ model, selected, onSelect, disabled }) {
                 {model.blurb}
             </div>
             <div className="flex items-center justify-between text-[11px] mb-1.5">
-                <span className="text-text-muted">{model.priceLabel}</span>
-                <span className="text-text-muted/60">~{model.defaultDuration}sn</span>
+                <span className={`${isFree ? 'text-neon-green font-semibold' : 'text-text-muted'}`}>
+                    {model.priceLabel}
+                </span>
+                {cost && cost !== 'FREE' && (
+                    <span className="text-text-muted/60">{cost}</span>
+                )}
+                {!cost || cost === 'FREE' ? (
+                    <span className="text-text-muted/60">~{model.defaultDuration}sn</span>
+                ) : null}
             </div>
             {licenseBadge && (
                 <div className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${licenseBadge.tone}`}>

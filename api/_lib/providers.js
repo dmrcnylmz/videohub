@@ -12,6 +12,8 @@
 //     play back.
 //   - TIMEOUTS: 25s wall-clock per fetch. Vercel function ceiling is 30s.
 
+import { getWorkflow } from './comfy-workflows/index.js';
+
 const FAL_QUEUE_BASE = 'https://queue.fal.run';
 const MUAPI_BASE = 'https://api.muapi.ai/api/v1';
 const REPLICATE_BASE = 'https://api.replicate.com/v1';
@@ -69,6 +71,8 @@ async function falSubmit(model, params) {
         ...(params.duration ? { duration: params.duration } : {}),
         ...(params.resolution ? { resolution: params.resolution } : {}),
         ...(params.aspect_ratio ? { aspect_ratio: params.aspect_ratio } : {}),
+        ...(params.image_url ? { image_url: params.image_url } : {}),
+        ...(typeof params.seed === 'number' ? { seed: params.seed } : {}),
     };
 
     // SINGLE ATTEMPT — submit creates a billable job; retry would double-charge
@@ -212,6 +216,8 @@ async function replicateSubmit(model, params) {
         ...(params.duration ? { duration: params.duration } : {}),
         ...(params.resolution ? { resolution: params.resolution } : {}),
         ...(params.aspect_ratio ? { aspect_ratio: params.aspect_ratio } : {}),
+        ...(params.image_url ? { image: params.image_url, start_image: params.image_url } : {}),
+        ...(typeof params.seed === 'number' ? { seed: params.seed } : {}),
     };
     const body = hasVersion ? { version: model.endpoint, input } : { input };
 
@@ -264,12 +270,160 @@ async function replicateStatus(taskId) {
     return { status: 'processing' };
 }
 
+// ------------- local-comfy (self-hosted ComfyUI on home GPU) -------------
+//
+// Architecture: Cliphie (Vercel) ←→ Cloudflare Tunnel / ngrok ←→ ComfyUI on home PC
+// Cost: $0 per generation. Latency: 60-300s depending on model + GPU.
+// LOCAL_COMFY_URL must be set in env. If missing, model is filtered out by api/models.js.
+//
+// Submit flow:
+//   1. (i2v only) fetch image_url, POST to ComfyUI /upload/image, get filename back
+//   2. Build workflow JSON via comfy-workflows/<name>.js buildPrompt()
+//   3. POST workflow to ComfyUI /prompt → returns prompt_id
+// Status flow:
+//   1. GET /history/<prompt_id> — empty object means still running, populated means done
+//   2. Extract output filename from outputs[<node>].videos[0].filename
+//   3. videoUrl = LOCAL_COMFY_URL + /view?filename=...&type=output
+
+function getLocalComfyBase() {
+    const url = process.env.LOCAL_COMFY_URL;
+    if (!url) throw httpError(503, 'LOCAL_COMFY_URL not configured (self-host backend offline)');
+    return url.replace(/\/+$/, '');
+}
+
+async function uploadImageToComfy(base, imageUrl) {
+    // Accept data URI or http(s) URL
+    let blob;
+    let filename = `cliphie-input-${Date.now()}.png`;
+    if (imageUrl.startsWith('data:')) {
+        const m = imageUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!m) throw httpError(400, 'invalid data URI for image_url');
+        const mime = m[1];
+        const buf = Buffer.from(m[2], 'base64');
+        blob = new Blob([buf], { type: mime });
+        const ext = mime.split('/')[1] || 'png';
+        filename = `cliphie-input-${Date.now()}.${ext}`;
+    } else {
+        const r = await fetchWithTimeout(imageUrl);
+        if (!r.ok) throw httpError(400, `failed to fetch image_url (${r.status})`);
+        const ab = await r.arrayBuffer();
+        const ct = r.headers.get('content-type') || 'image/png';
+        blob = new Blob([ab], { type: ct });
+        const ext = (ct.split('/')[1] || 'png').split(';')[0];
+        filename = `cliphie-input-${Date.now()}.${ext}`;
+    }
+    const form = new FormData();
+    form.append('image', blob, filename);
+    form.append('overwrite', 'true');
+    const upRes = await fetchWithTimeout(`${base}/upload/image`, { method: 'POST', body: form });
+    if (!upRes.ok) {
+        const err = await upRes.text().catch(() => '');
+        throw httpError(upRes.status, `ComfyUI upload failed: ${err.slice(0, 200)}`);
+    }
+    const data = await upRes.json().catch(() => ({}));
+    return data.name || filename;
+}
+
+async function localComfySubmit(model, params) {
+    const base = getLocalComfyBase();
+    const wf = getWorkflow(model.workflow);
+    if (!wf) throw httpError(500, `unknown workflow: ${model.workflow}`);
+
+    const buildArgs = {
+        prompt: params.prompt,
+        seed: params.seed || 0,
+        duration: params.duration || model.defaultDuration || 5,
+        resolution: params.resolution || '480p',
+    };
+
+    if (wf.META.kind === 'i2v') {
+        if (!params.image_url) throw httpError(400, 'image_url required for image-to-video model');
+        buildArgs.image_filename = await uploadImageToComfy(base, params.image_url);
+    }
+
+    const body = wf.buildPrompt(buildArgs);
+
+    // SINGLE ATTEMPT — even though no $ cost, double-submit wastes minutes of GPU time
+    const res = await fetchWithTimeout(`${base}/prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw httpError(res.status, data?.error?.message || `ComfyUI submit failed (${res.status})`);
+    }
+    if (!data.prompt_id) throw httpError(502, 'ComfyUI did not return prompt_id');
+    return { taskId: data.prompt_id };
+}
+
+async function localComfyStatus(taskId) {
+    const base = getLocalComfyBase();
+
+    const res = await fetchIdempotent(`${base}/history/${encodeURIComponent(taskId)}`, {
+        headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+        return { status: 'error', error: `ComfyUI history ${res.status}` };
+    }
+    const data = await res.json().catch(() => ({}));
+    const entry = data?.[taskId];
+
+    if (!entry) {
+        // Either still queued/running or unknown id; check /queue to disambiguate
+        const q = await fetchIdempotent(`${base}/queue`, { headers: { Accept: 'application/json' } });
+        if (q.ok) {
+            const queue = await q.json().catch(() => ({}));
+            const running = (queue.queue_running || []).some((x) => x?.[1] === taskId);
+            const pending = (queue.queue_pending || []).some((x) => x?.[1] === taskId);
+            if (running) return { status: 'processing' };
+            if (pending) return { status: 'queued' };
+        }
+        return { status: 'processing' };
+    }
+
+    // Check for errors
+    const status = entry.status || {};
+    if (status.status_str === 'error') {
+        const msg = (status.messages || []).find((m) => m?.[0] === 'execution_error');
+        return { status: 'error', error: msg?.[1]?.exception_message || 'ComfyUI execution error' };
+    }
+
+    // Find video output
+    const outputs = entry.outputs || {};
+    let videoFilename = null;
+    let videoSubfolder = '';
+    let videoType = 'output';
+    for (const nodeId of Object.keys(outputs)) {
+        const out = outputs[nodeId];
+        const candidates = out.videos || out.gifs || [];
+        if (candidates.length) {
+            videoFilename = candidates[0].filename;
+            videoSubfolder = candidates[0].subfolder || '';
+            videoType = candidates[0].type || 'output';
+            break;
+        }
+    }
+    if (!videoFilename) {
+        if (status.completed) {
+            return { status: 'error', error: 'ComfyUI completed but produced no video output' };
+        }
+        return { status: 'processing' };
+    }
+
+    const params = new URLSearchParams({ filename: videoFilename, type: videoType });
+    if (videoSubfolder) params.set('subfolder', videoSubfolder);
+    const videoUrl = `${base}/view?${params}`;
+    return { status: 'complete', videoUrl };
+}
+
 // ------------- exports -------------
 
 export const PROVIDERS = {
     fal: { submit: falSubmit, status: falStatus },
     muapi: { submit: muapiSubmit, status: muapiStatus },
     replicate: { submit: replicateSubmit, status: replicateStatus },
+    'local-comfy': { submit: localComfySubmit, status: localComfyStatus },
 };
 
 export function httpError(status, message) {
